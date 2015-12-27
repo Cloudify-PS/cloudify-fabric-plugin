@@ -37,6 +37,7 @@ from cloudify.exceptions import NonRecoverableError
 from fabric_plugin import tunnel
 from fabric_plugin import exec_env
 
+from cloudify.proxy.client import ScriptException
 
 DEFAULT_BASE_DIR = '/tmp/cloudify-ctx'
 
@@ -59,6 +60,7 @@ FABRIC_ENV_DEFAULTS = {
 # to bootstrap
 CLOUDIFY_MANAGER_PRIVATE_KEY_PATH = 'CLOUDIFY_MANAGER_PRIVATE_KEY_PATH'
 
+CTX_END_RUNTIME_ERROR_MSG = 'ctx may only abort or return once'
 
 @operation
 def run_task(tasks_file, task_name, fabric_env=None,
@@ -159,11 +161,24 @@ def run_script(script_path, fabric_env=None, process=None, **kwargs):
 
         actual_ctx = ctx._get_current_object()
 
+        def aborts(_message):
+            if actual_ctx._return_value is not None:
+                actual_ctx._return_value = \
+                    RuntimeError('ctx may only abort or return once')
+                raise actual_ctx._return_value
+            actual_ctx._return_value = ScriptException(_message)
+            return actual_ctx._return_value
+        actual_ctx.aborts = aborts
+
         def returns(_value):
+            if actual_ctx._return_value is not None:
+                actual_ctx._return_value = \
+                    RuntimeError('ctx may only abort or return once')
+                raise actual_ctx._return_value
             actual_ctx._return_value = _value
-        actual_ctx._return_value = None
         actual_ctx.returns = returns
 
+        actual_ctx._return_value = None
         original_download_resource = actual_ctx.download_resource
 
         def download_resource(resource_path, target_path=None):
@@ -210,9 +225,23 @@ def run_script(script_path, fabric_env=None, process=None, **kwargs):
             fabric_api.put(env_script, remote_env_script_path)
             with fabric_context.cd(cwd):
                 with tunnel.remote(proxy.port):
-                    fabric_api.run('source {0} && {1}'.format(
-                        remote_env_script_path, command))
-            return actual_ctx._return_value
+                    try:
+                        fabric_api.run('source {0} && {1}'.format(
+                            remote_env_script_path, command))
+                    except FabricTaskError:
+                        # if the abort command has been sent, ignore error
+                        if isinstance(actual_ctx._return_value,
+                                      (ScriptException, RuntimeError)):
+                            raise NonRecoverableError(
+                                str(actual_ctx._return_value))
+                        else:
+                            raise
+            if isinstance(actual_ctx._return_value,
+                          (ScriptException, RuntimeError)):
+                raise ScriptException(str(actual_ctx._return_value))
+            else:
+                return actual_ctx._return_value
+
         finally:
             proxy.close()
 
