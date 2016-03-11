@@ -122,8 +122,11 @@ def run_script(script_path, fabric_env=None, process=None, fail_hard=False, **kw
     proxy_client_path = proxy_client.__file__
     if proxy_client_path.endswith('.pyc'):
         proxy_client_path = proxy_client_path[:-1]
+    ctx.logger.info('Before get script. Process: %s' % str(process))
     local_script_path = get_script(ctx.download_resource, script_path)
     base_script_path = os.path.basename(local_script_path)
+    ctx.logger.info('After get script. Base script path: %s' % str(
+        base_script_path))
     remote_ctx_dir = base_dir
     remote_ctx_path = '{0}/ctx'.format(remote_ctx_dir)
     remote_scripts_dir = '{0}/scripts'.format(remote_ctx_dir)
@@ -132,7 +135,8 @@ def run_script(script_path, fabric_env=None, process=None, fail_hard=False, **kw
                                                   base_script_path)
     remote_script_path = '{0}/{1}'.format(remote_scripts_dir,
                                           base_script_path)
-
+    ctx.logger.info('After get script. Remote script path: %s' % str(
+        remote_script_path))
     env = process.get('env', {})
     cwd = process.get('cwd', remote_work_dir)
     args = process.get('args')
@@ -145,6 +149,7 @@ def run_script(script_path, fabric_env=None, process=None, fail_hard=False, **kw
         command = ' '.join([command] + args)
 
     with fabric_api.settings(**_fabric_env(fabric_env, warn_only=False)):
+        ctx.logger.info('Creating directories: %s' % str(remote_scripts_dir))
         if not fabric_files.exists(remote_ctx_dir):
             # there may be race conditions with other operations that
             # may be running in parallel, so we pass -p to make sure
@@ -153,6 +158,8 @@ def run_script(script_path, fabric_env=None, process=None, fail_hard=False, **kw
             fabric_api.run('mkdir -p {0}'.format(remote_work_dir))
             fabric_api.put(proxy_client_path, remote_ctx_path)
 
+        ctx.logger.info('Does directory exist: %s' % str(
+        fabric_files.exists(remote_ctx_dir)))
         actual_ctx = ctx._get_current_object()
 
         def returns(_value):
@@ -192,13 +199,14 @@ def run_script(script_path, fabric_env=None, process=None, fail_hard=False, **kw
                                    .format(remote_env_script_path, command))
             return actual_ctx._return_value
         except Exception as e:
-            cfy_e = NonRecoverableError() if fail_hard else e
+            cfy_e = NonRecoverableError(e) if fail_hard else e
             raise cfy_e
         finally:
             proxy.close()
 
 
 def get_script(download_resource_func, script_path):
+    ctx.logger.info('Get script: %s' % str(script_path))
     split = script_path.split('://')
     schema = split[0]
     if schema in ['http', 'https']:
