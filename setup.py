@@ -18,8 +18,8 @@ from setuptools import setup
 
 setup(
     name='cloudify-fabric-plugin',
-    version='1.3.1',
-    author='Gigaspaces',
+    version='1.3.1.post1',
+    author='Gigaspaces Professional Services',
     author_email='cosmo-admin@gigaspaces.com',
     packages=['fabric_plugin'],
     license='LICENSE',
