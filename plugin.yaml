@@ -6,4 +6,4 @@ plugins:
         executor: central_deployment_agent
         source: https://github.com/Cloudify-PS/cloudify-fabric-plugin/archive/1.4.2-p001.zip
         package_name: cloudify-fabric-plugin
-        package_version: '1.4.2post1'
+        package_version: '1.4.2.post1'
