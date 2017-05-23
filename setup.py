@@ -18,7 +18,7 @@ from setuptools import setup
 
 setup(
     name='cloudify-fabric-plugin',
-    version='1.4.2',
+    version='1.4.2post1',
     author='Gigaspaces',
     author_email='cosmo-admin@gigaspaces.com',
     packages=['fabric_plugin'],
