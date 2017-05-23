@@ -176,7 +176,7 @@ def run_script(script_path,
 
         #  "CFY_EXEC_TEMPDIR_ENVVAR" doesn't exist in 3.3.1, so
         # to remain backward compatible...
-        if not base_dir and utils.get('CFY_EXEC_TEMPDIR_ENVVAR'):
+        if not base_dir and hasattr(utils, 'CFY_EXEC_TEMPDIR_ENVVAR'):
             base_dir = fabric_api.run("echo ${}".format(
                 utils.CFY_EXEC_TEMPDIR_ENVVAR))
             if base_dir:
