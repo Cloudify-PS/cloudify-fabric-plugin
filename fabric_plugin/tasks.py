@@ -50,7 +50,6 @@ UNSUPPORTED_SCRIPT_FEATURE_ERROR = \
     RuntimeError('ctx abort & retry commands are only supported in Cloudify '
                  '3.4 or later')
 
-DEFAULT_TEMP_DIR = '/tmp'
 DEFAULT_BASE_SUBDIR = 'cloudify-ctx'
 
 FABRIC_ENV_DEFAULTS = {
@@ -174,18 +173,21 @@ def run_script(script_path,
 
         base_dir = process.get('base_dir')
 
-        #  "CFY_EXEC_TEMPDIR_ENVVAR" doesn't exist in 3.3.1, so
-        # to remain backward compatible...
-        if not base_dir and hasattr(utils, 'CFY_EXEC_TEMPDIR_ENVVAR'):
-            base_dir = fabric_api.run("echo ${}".format(
-                utils.CFY_EXEC_TEMPDIR_ENVVAR))
-            if base_dir:
-                base_dir = os.path.join(base_dir, 'cloudify-ctx')
+        if not base_dir:
+            #  "CFY_EXEC_TEMPDIR_ENVVAR" doesn't exist in 3.3.1, so
+            # to remain backward compatible...
+            if hasattr(utils, 'CFY_EXEC_TEMPDIR_ENVVAR'):
+                base_dir = fabric_api.run(
+                    '( [[ -n "${0}" ]] && echo ${0} ) || '
+                    'echo $(dirname $(mktemp -u))'.format(
+                    utils.CFY_EXEC_TEMPDIR_ENVVAR))
+            else:
+                base_dir = fabric_api.run('echo $(dirname $(mktemp -u))')
 
         if not base_dir:
-            base_dir = fabric_api.run("echo $TMPDIR")
-            base_dir = os.path.join(base_dir or DEFAULT_TEMP_DIR,
-                                    DEFAULT_BASE_SUBDIR)
+            raise NonRecoverableError('Could not conclude temporary directory')
+
+        base_dir = os.path.join(base_dir, DEFAULT_BASE_SUBDIR)
 
         ctx.logger.debug('base_dir set to: {0}'.format(base_dir))
 
