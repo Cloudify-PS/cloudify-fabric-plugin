@@ -169,7 +169,7 @@ def run_script(script_path,
         # * 'base_dir' process input
         # * ${CFY_EXEC_TEMP}/cloudify-ctx on the remote machine, if
         #   CFY_EXEC_TEMP is defined
-        # * DEFAULT_BASE_DIR
+        # * <python default tempdir>/cloudify-ctx
 
         base_dir = process.get('base_dir')
 
@@ -178,11 +178,11 @@ def run_script(script_path,
             # to remain backward compatible...
             if hasattr(utils, 'CFY_EXEC_TEMPDIR_ENVVAR'):
                 base_dir = fabric_api.run(
-                    '( [[ -n "${0}" ]] && echo ${0} ) || '
-                    'echo $(dirname $(mktemp -u))'.format(
+                    '( [[ -n "${0}" ]] && echo -n ${0} ) || '
+                    'echo -n $(dirname $(mktemp -u))'.format(
                     utils.CFY_EXEC_TEMPDIR_ENVVAR))
             else:
-                base_dir = fabric_api.run('echo $(dirname $(mktemp -u))')
+                base_dir = fabric_api.run('echo -n $(dirname $(mktemp -u))')
 
         if not base_dir:
             raise NonRecoverableError('Could not conclude temporary directory')
